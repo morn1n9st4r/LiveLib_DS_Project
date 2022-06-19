@@ -11,8 +11,10 @@ def parse_info(bc_info):
     pass
 
 def parse_rating(bc_rating):
-
-    pass
+    splitted_rating = re.split("\n", re.sub(u"\xa0", '', bc_rating))
+    rating = splitted_rating[0]
+    return pd.DataFrame(data=[rating],
+                        columns=['Rating'])
 
 def parse_stat(bc_stat):
     splitted_stat = re.split("\n", re.sub(u"\xa0", '', bc_stat))
@@ -46,5 +48,5 @@ bc_stat = re.sub(' +', '', re.sub('\n+', '\n', soup.select('div.bc-stat')[0].get
 
 bc_edition = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('table.bc-edition')[0].get_text().strip()))
 
-splitted_edition = re.split("\n", re.sub(u"\xa0", '', bc_edition))
-print(splitted_edition)
+splitted_rating = re.split("\n", re.sub(u"\xa0", '', bc_rating))
+print(splitted_rating)
