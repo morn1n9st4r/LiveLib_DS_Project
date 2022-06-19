@@ -25,8 +25,11 @@ def parse_stat(bc_stat):
 
 
 def parse_edition(bc_edition):
-
-    pass
+    splitted_edition = re.split("\n", re.sub(u"\xa0", '', bc_edition))
+    series = splitted_edition[1]
+    edition = splitted_edition[3]
+    pd.DataFrame(data=[series, edition],
+                 columns=['Series', 'Edition'])
 
 
 #url = "https://www.livelib.ru/book/1006221700-gordost-i-predubezhdenie-dzhejn-ostin"
@@ -43,5 +46,5 @@ bc_stat = re.sub(' +', '', re.sub('\n+', '\n', soup.select('div.bc-stat')[0].get
 
 bc_edition = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('table.bc-edition')[0].get_text().strip()))
 
-splitted_stat = re.split("\n", re.sub(u"\xa0", '', bc_stat))
-print(splitted_stat)
+splitted_edition = re.split("\n", re.sub(u"\xa0", '', bc_edition))
+print(splitted_edition)
