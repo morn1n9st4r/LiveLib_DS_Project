@@ -3,18 +3,81 @@ from urllib.request import urlopen, Request
 import pandas as pd
 import re
 
+
 def aquire_df_from_book(bc_info, bc_rating, bc_stat, bc_edition):
-    pass
+    return pd.concat([parse_info(bc_info),
+                      parse_rating(bc_rating),
+                      parse_stat(bc_stat),
+                      parse_edition(bc_edition)], axis=1)
+
 
 def parse_info(bc_info):
+    regex_name = r'(?s)(?<=Содержание).*?(?=.—.)'
+    regex_author = r'(?s)(?<=.—.).*?(?=,)'
+    regex_isbn = r'[-0-9]{10,15}'
+    regex_year = r'\bГод.издания: \d+'
+    regex_pages = r'(\bКоличество.страниц: \d+)|(\bСтраниц: \d+)|(\d+\s*стр)'
+    regex_books = r'\bТираж: \d+'
+    regex_restrictions = r'\Возрастные.ограничения: \d+'
+    regex_genres = r'(?s)(?<=Жанры:).*?(?=Теги:)'
+    regex_translator = r'Перевод[чик]*[и]*: .+'
 
-    pass
+    pattern = re.compile(regex_name, re.UNICODE)
+    name = pattern.findall(bc_info)[0].strip()
+
+    pattern = re.compile(regex_author, re.UNICODE)
+    author = pattern.findall(bc_info)[0].strip()
+
+    # isbn's
+    pattern = re.compile(regex_isbn, re.UNICODE)
+    isbn = pattern.findall(bc_info)
+
+    pattern = re.compile(regex_year, re.UNICODE)
+    year = re.search(r"\d+", pattern.findall(bc_info)[0])
+
+    pattern = re.compile(regex_pages, re.UNICODE)
+    pages = re.search(r"\d+", ''.join(pattern.findall(bc_info)[0]))
+
+    pattern = re.compile(regex_books, re.UNICODE)
+    copies = re.search(r"\d+", pattern.findall(bc_info)[0])
+
+    pattern = re.compile(regex_restrictions, re.UNICODE)
+    restrictions = re.search(r"\d+", pattern.findall(bc_info)[0])
+
+    pattern = re.compile(regex_genres, re.UNICODE)
+
+    genres = pattern.findall(bc_info)[0]
+    genres = re.sub(u"\xa0", '', genres)
+    genres = re.sub(u"\u2002", '', genres)
+    genres = re.sub(u" \n ", '', genres)
+    genres = re.sub(u"\n", '', genres)
+
+    pattern = re.compile(regex_translator, re.UNICODE)
+    translator = re.sub(r'Перевод[чик]*[и]*: ', '', pattern.findall(bc_info)[0])
+
+    data = {
+        'Name': [name], 'Author': [author], 'ISBN': isbn, 'Year': [year[0]],
+        'Pages': [pages[0]], 'Copies': [copies[0]], 'AgeRestrictions': [restrictions[0]],
+        'Genres': [''.join(genres)], 'TranslatorName': [translator]
+    }
+    df = pd.DataFrame(data)
+
+    return df
+
+
 
 def parse_rating(bc_rating):
     splitted_rating = re.split("\n", re.sub(u"\xa0", '', bc_rating))
     rating = splitted_rating[0]
-    return pd.DataFrame(data=[rating],
-                        columns=['Rating'])
+
+    data = {
+        'Rating': [rating]
+    }
+
+    df = pd.DataFrame(data)
+
+    return df
+
 
 def parse_stat(bc_stat):
     splitted_stat = re.split("\n", re.sub(u"\xa0", '', bc_stat))
@@ -22,22 +85,34 @@ def parse_stat(bc_stat):
     planned = splitted_stat[2]
     reviews = splitted_stat[4]
     quotes = splitted_stat[7]
-    return pd.DataFrame(data=[have_read, planned, reviews, quotes],
-                        columns=['HaveRead', 'Planned', 'Reviews', 'Quotes'])
+
+    data = {
+        'HaveRead': [have_read], 'Planned': [planned], 'Reviews': [reviews], 'Quotes':[quotes]
+    }
+
+    df = pd.DataFrame(data)
+
+    return df
 
 
 def parse_edition(bc_edition):
     splitted_edition = re.split("\n", re.sub(u"\xa0", '', bc_edition))
     series = splitted_edition[1]
     edition = splitted_edition[3]
-    pd.DataFrame(data=[series, edition],
-                 columns=['Series', 'Edition'])
+
+    data = {
+        'Series': [series], 'Edition': [edition]
+    }
+
+    df = pd.DataFrame(data)
+
+    return df
 
 
-#url = "https://www.livelib.ru/book/1006221700-gordost-i-predubezhdenie-dzhejn-ostin"
-url = "https://www.livelib.ru/book/1000031495-velikij-getsbi-frensis-skott-fitsdzherald"
+url = "https://www.livelib.ru/book/1006221700-gordost-i-predubezhdenie-dzhejn-ostin"
+#url = "https://www.livelib.ru/book/1002680578-teatr-somerset-moem"
 
-req = Request(url, headers={'User-Agent': 'Mozilla/6.0'})
+req = Request(url, headers={'User-Agent':'APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)'})
 html = urlopen(req).read().decode("utf-8")
 soup = BeautifulSoup(html, "html.parser")
 bc_info = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('div.bc-info')[0].get_text().strip()))
@@ -48,5 +123,6 @@ bc_stat = re.sub(' +', '', re.sub('\n+', '\n', soup.select('div.bc-stat')[0].get
 
 bc_edition = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('table.bc-edition')[0].get_text().strip()))
 
-splitted_rating = re.split("\n", re.sub(u"\xa0", '', bc_rating))
-print(splitted_rating)
+#print(bc_info)
+
+print(aquire_df_from_book(bc_info, bc_rating, bc_stat, bc_edition).to_string())
