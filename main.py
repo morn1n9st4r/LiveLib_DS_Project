@@ -4,8 +4,6 @@ import pandas as pd
 import re
 
 
-# regex_name = r'(?s)(?<=Содержание).*?(?=.—.)'
-# regex_author = r'(?s)(?<=.—.).*?(?=,)'
 class BookParser:
 
     def __init__(self, url,
@@ -18,10 +16,11 @@ class BookParser:
         html = urlopen(req).read().decode("utf-8")
         soup = BeautifulSoup(html, "html.parser")
 
+        # scrape some particular areas of page
+
         h1_title = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('h1.bc__book-title')[0].get_text().strip()))
         h2_author = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('h2.bc-author')[0].get_text().strip()))
         bc_info = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('div.bc-info')[0].get_text().strip()))
-        print(bc_info)
         bc_rating = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('div.bc-rating')[0].get_text().strip()))
         bc_stat = re.sub(' +', '', re.sub('\n+', '\n', soup.select('div.bc-stat')[0].get_text().strip()))
         bc_edition = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('table.bc-edition')[0].get_text().strip()))
@@ -45,8 +44,17 @@ class BookParser:
         return df
 
     def parse_info(self, bc_info):
-        regex_isbn = r'ISBN: [-X0-9]{10,15}.+'
+
+        # first we take whole line with isbn's (one book can have few)
+        # next step we take just numbers
+
+        regex_isbn = r'ISBN: [-X0-9]{10,18}.+'
+        regex_isbn_nums = r'[-X0-9]{10,18}'
+
         regex_year = r'\bГод.издания: \d+'
+
+        # LiveLib has no one definite standart of writing of pages
+        # it could be represented in next 3 forms:
 
         regex_pages_v1 = r'\bКоличество.страниц: \d+'
         regex_pages_v2 = r'\bСтраниц: \d+'
@@ -61,10 +69,8 @@ class BookParser:
         pattern = re.compile(regex_isbn, re.UNICODE)
         isbn = pattern.findall(bc_info)[0]
 
-        regex_isbn_nums = r'[-X0-9]{10,15}'
         pattern = re.compile(regex_isbn_nums, re.UNICODE)
         isbn = pattern.findall(isbn)
-
 
         pattern = re.compile(regex_year, re.UNICODE)
         year = re.search(r"\d+", pattern.findall(bc_info)[0])[0]
@@ -88,9 +94,10 @@ class BookParser:
         except IndexError:
             pages = 'None'
 
-
         pattern = re.compile(regex_books, re.UNICODE)
         copies = pattern.findall(bc_info)
+
+        # same with copies numbers
 
         try:
             copies = re.search(r"\d+", ''.join(copies[0]))[0]
@@ -108,6 +115,9 @@ class BookParser:
         genres = re.sub(u" \n ", '', genres)
         genres = re.sub(u"\n", '', genres)
 
+        # and translator name
+        # (book can be not translated)
+
         pattern = re.compile(regex_translator, re.UNICODE)
         translator = pattern.findall(bc_info)
         try:
@@ -117,11 +127,11 @@ class BookParser:
 
         data = {
             'ISBN': [isbn],
-            'Year': [year],
+            'EditionYear': [year],
             'Pages': [pages],
-            'Copies': [copies],
+            'CopiesIssued': [copies],
             'AgeRestrictions': [restrictions],
-            'Genres': [''.join(genres)],
+            'Genres': [genres.split(',')],
             'TranslatorName': [translator]
         }
         df = pd.DataFrame(data)
@@ -131,11 +141,9 @@ class BookParser:
     def parse_rating(self, bc_rating):
         splitted_rating = re.split("\n", re.sub(u"\xa0", '', bc_rating))
         rating = splitted_rating[0]
-
         data = {
             'Rating': [rating]
         }
-
         df = pd.DataFrame(data)
 
         return df
@@ -146,14 +154,12 @@ class BookParser:
         planned = splitted_stat[2]
         reviews = splitted_stat[4]
         quotes = splitted_stat[7]
-
         data = {
             'HaveRead': [have_read],
             'Planned': [planned],
             'Reviews': [reviews],
             'Quotes': [quotes]
         }
-
         df = pd.DataFrame(data)
 
         return df
@@ -161,13 +167,16 @@ class BookParser:
     def parse_edition(self, bc_edition):
         splitted_edition = re.split("\n", re.sub(u"\xa0", '', bc_edition))
         series = splitted_edition[1]
-        edition = splitted_edition[3]
 
+        # index 3 if not part of the cycle
+        # e.g. 'Game of Thrones' is part of 'Song of Fire and Ice'
+        # that's why we take index 5
+
+        edition = splitted_edition[5] if len(splitted_edition) > 4 else splitted_edition[3]
         data = {
             'Series': [series],
             'Edition': [edition]
         }
-
         df = pd.DataFrame(data)
 
         return df
@@ -178,12 +187,9 @@ class BookParser:
 # url = "https://www.livelib.ru/book/1000006896-bojtsovskij-klub-chak-palanik"
 # url = "https://www.livelib.ru/book/1000848097-chuma-alber-kamyu"
 # url = "https://www.livelib.ru/book/1000480620-zelenaya-milya-stiven-king"
-url = "https://www.livelib.ru/book/1000002563-master-i-margarita-mihail-bulgakov"
+# url = "https://www.livelib.ru/book/1000002563-master-i-margarita-mihail-bulgakov"
+# url = "https://www.livelib.ru/book/1006906093-pesn-prizrachnogo-lesa-erika-uoters"
+url = "https://www.livelib.ru/book/1004112562-pervyj-zakon-krov-i-zhelezo-dzho-aberkrombi"
 
-
-bp = BookParser(url)
+bp = BookParser(url=url)
 print(bp.scrape_text().to_string())
-
-# print(bc_info)
-
-
