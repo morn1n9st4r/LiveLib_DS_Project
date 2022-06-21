@@ -29,7 +29,7 @@ class BookParser:
 
     def scrape_text(self):
         req = Request(self.url, headers={'User-Agent': self.userAgent})
-        html = urlopen(req).read().decode("utf-8")
+        html = urlopen(req).read().decode('utf-8')
         soup = BeautifulSoup(html, "html.parser")
 
         # scrape some particular areas of page
@@ -83,15 +83,20 @@ class BookParser:
         regex_translator = r'Перевод[чик]*[и]*: .+'
 
         # isbn's
-        pattern = re.compile(regex_isbn, re.UNICODE)
-        isbn = pattern.findall(bc_info)[0]
+        try:
+            pattern = re.compile(regex_isbn, re.UNICODE)
+            isbn = pattern.findall(bc_info)[0]
 
-        pattern = re.compile(regex_isbn_nums, re.UNICODE)
-        isbn = pattern.findall(isbn)
+            pattern = re.compile(regex_isbn_nums, re.UNICODE)
+            isbn = pattern.findall(isbn)
+        except IndexError:
+            isbn = 'None'
 
-        pattern = re.compile(regex_year, re.UNICODE)
-        year = re.search(r"\d+", pattern.findall(bc_info)[0])[0]
-
+        try:
+            pattern = re.compile(regex_year, re.UNICODE)
+            year = re.search(r"\d+", pattern.findall(bc_info)[0])[0]
+        except IndexError:
+            year = 'None'
         # pages
         # dangerous category since it could be not listed
         # need try-except clause
@@ -122,17 +127,22 @@ class BookParser:
             copies = 'None'
 
         pattern = re.compile(regex_restrictions, re.UNICODE)
-        restrictions = re.search(r"\d+", pattern.findall(bc_info)[0])[0]
+
+        try:
+            restrictions = re.search(r"\d+", pattern.findall(bc_info)[0])[0]
+        except IndexError:
+            restrictions = 'None'
 
         pattern = re.compile(regex_genres, re.UNICODE)
-
-        genres = pattern.findall(bc_info)[0]
-        genres = re.sub(u"\xa0", '', genres)
-        genres = re.sub(u"\u2002", '', genres)
-        genres = re.sub(u" \n ", '', genres)
-        genres = re.sub(u"\n", '', genres)
-        genres = re.sub(r"№\d+в", '', genres)
-
+        try:
+            genres = pattern.findall(bc_info)[0]
+            genres = re.sub(u"\xa0", '', genres)
+            genres = re.sub(u"\u2002", '', genres)
+            genres = re.sub(u" \n ", '', genres)
+            genres = re.sub(u"\n", '', genres)
+            genres = re.sub(r"№\d+в", '', genres)
+        except IndexError:
+            genres = 'None'
         # and translator name
         # (book can be not translated)
 
@@ -168,10 +178,26 @@ class BookParser:
 
     def parse_stat(self, bc_stat):
         splitted_stat = re.split("\n", re.sub(u"\xa0", '', bc_stat))
-        have_read = splitted_stat[0]
-        planned = splitted_stat[2]
-        reviews = splitted_stat[4]
-        quotes = splitted_stat[7]
+        try:
+            have_read = splitted_stat[0]
+        except IndexError:
+            have_read = 'None'
+
+        try:
+            planned = splitted_stat[2]
+        except IndexError:
+            planned = 'None'
+
+        try:
+            reviews = splitted_stat[4]
+        except IndexError:
+            reviews = 'None'
+
+        try:
+            quotes = splitted_stat[7]
+        except IndexError:
+            quotes = 'None'
+
         data = {
             'HaveRead': [have_read],
             'Planned': [planned],
@@ -184,13 +210,19 @@ class BookParser:
 
     def parse_edition(self, bc_edition):
         splitted_edition = re.split("\n", re.sub(u"\xa0", '', bc_edition))
-        series = splitted_edition[1].strip()
 
+        try:
+            series = splitted_edition[1].strip()
+        except IndexError:
+            series = 'None'
         # index 3 if not part of the cycle
         # e.g. 'Game of Thrones' is part of 'Song of Fire and Ice'
         # that's why we take index 5
 
-        edition = splitted_edition[5] if len(splitted_edition) > 4 else splitted_edition[3]
+        try:
+            edition = splitted_edition[5] if len(splitted_edition) > 4 else splitted_edition[3]
+        except IndexError:
+            edition = 'None'
         data = {
             'Series': [series],
             'Edition': [edition]
