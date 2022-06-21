@@ -21,6 +21,7 @@ class BookParser:
         h1_title = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('h1.bc__book-title')[0].get_text().strip()))
         h2_author = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('h2.bc-author')[0].get_text().strip()))
         bc_info = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('div.bc-info')[0].get_text().strip()))
+        print(bc_info)
         bc_rating = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('div.bc-rating')[0].get_text().strip()))
         bc_stat = re.sub(' +', '', re.sub('\n+', '\n', soup.select('div.bc-stat')[0].get_text().strip()))
         bc_edition = re.sub(' +', ' ', re.sub('\n+', '\n', soup.select('table.bc-edition')[0].get_text().strip()))
@@ -44,43 +45,60 @@ class BookParser:
         return df
 
     def parse_info(self, bc_info):
-        regex_isbn = r'[-X0-9]{10,15}'
+        regex_isbn = r'ISBN: [-X0-9]{10,15}.+'
         regex_year = r'\bГод.издания: \d+'
 
         regex_pages_v1 = r'\bКоличество.страниц: \d+'
         regex_pages_v2 = r'\bСтраниц: \d+'
         regex_pages_v3 = r'\d+\s*стр'
 
-        regex_books = r'\bТираж: \d+'
+        regex_books = r'\bТираж.* \d+'
         regex_restrictions = r'\Возрастные.ограничения: \d+'
         regex_genres = r'(?s)(?<=Жанры:).*?(?=Теги:)'
         regex_translator = r'Перевод[чик]*[и]*: .+'
 
         # isbn's
         pattern = re.compile(regex_isbn, re.UNICODE)
-        isbn = pattern.findall(bc_info)
+        isbn = pattern.findall(bc_info)[0]
+
+        regex_isbn_nums = r'[-X0-9]{10,15}'
+        pattern = re.compile(regex_isbn_nums, re.UNICODE)
+        isbn = pattern.findall(isbn)
+
 
         pattern = re.compile(regex_year, re.UNICODE)
-        year = re.search(r"\d+", pattern.findall(bc_info)[0])
+        year = re.search(r"\d+", pattern.findall(bc_info)[0])[0]
+
+        # pages
+        # dangerous category since it could be not listed
+        # need try-except clause
 
         pattern = re.compile(regex_pages_v1, re.UNICODE)
         pages = pattern.findall(bc_info)
-
-        if not pages:
-            pattern = re.compile(regex_pages_v2, re.UNICODE)
-            pages = pattern.findall(bc_info)
-
+        try:
             if not pages:
-                pattern = re.compile(regex_pages_v3, re.UNICODE)
+                pattern = re.compile(regex_pages_v2, re.UNICODE)
                 pages = pattern.findall(bc_info)
 
-        pages = re.search(r"\d+", ''.join(pages[0]))[0]
+                if not pages:
+                    pattern = re.compile(regex_pages_v3, re.UNICODE)
+                    pages = pattern.findall(bc_info)
+
+            pages = re.search(r"\d+", ''.join(pages[0]))[0]
+        except IndexError:
+            pages = 'None'
+
 
         pattern = re.compile(regex_books, re.UNICODE)
-        copies = re.search(r"\d+", ''.join(pattern.findall(bc_info)[0]))
+        copies = pattern.findall(bc_info)
+
+        try:
+            copies = re.search(r"\d+", ''.join(copies[0]))[0]
+        except IndexError:
+            copies = 'None'
 
         pattern = re.compile(regex_restrictions, re.UNICODE)
-        restrictions = re.search(r"\d+", pattern.findall(bc_info)[0])
+        restrictions = re.search(r"\d+", pattern.findall(bc_info)[0])[0]
 
         pattern = re.compile(regex_genres, re.UNICODE)
 
@@ -91,14 +109,18 @@ class BookParser:
         genres = re.sub(u"\n", '', genres)
 
         pattern = re.compile(regex_translator, re.UNICODE)
-        translator = re.sub(r'Перевод[чик]*[и]*: ', '', pattern.findall(bc_info)[0])
+        translator = pattern.findall(bc_info)
+        try:
+            translator = re.sub(r'Перевод[чик]*[и]*: ', '', translator[0])
+        except IndexError:
+            translator = 'None'
 
         data = {
-            'ISBN': isbn,
-            'Year': [year[0]],
+            'ISBN': [isbn],
+            'Year': [year],
             'Pages': [pages],
-            'Copies': [copies[0]],
-            'AgeRestrictions': [restrictions[0]],
+            'Copies': [copies],
+            'AgeRestrictions': [restrictions],
             'Genres': [''.join(genres)],
             'TranslatorName': [translator]
         }
@@ -151,10 +173,12 @@ class BookParser:
         return df
 
 
-url = "https://www.livelib.ru/book/1006221700-gordost-i-predubezhdenie-dzhejn-ostin"
+# url = "https://www.livelib.ru/book/1006221700-gordost-i-predubezhdenie-dzhejn-ostin"
 # url = "https://www.livelib.ru/book/1000483887-sorok-pyat-aleksandr-dyuma"
 # url = "https://www.livelib.ru/book/1000006896-bojtsovskij-klub-chak-palanik"
 # url = "https://www.livelib.ru/book/1000848097-chuma-alber-kamyu"
+# url = "https://www.livelib.ru/book/1000480620-zelenaya-milya-stiven-king"
+url = "https://www.livelib.ru/book/1000002563-master-i-margarita-mihail-bulgakov"
 
 
 bp = BookParser(url)
