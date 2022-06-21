@@ -61,6 +61,7 @@ class BookParser:
 
     def parse_info(self, bc_info):
 
+
         # first we take whole line with isbn's (one book can have few)
         # next step we take just numbers
 
@@ -76,7 +77,7 @@ class BookParser:
         regex_pages_v2 = r'\bСтраниц: \d+'
         regex_pages_v3 = r'\d+\s*стр'
 
-        regex_books = r'\bТираж.* \d+'
+        regex_books = r'\bТираж.? ((\d+\s?)+|\d+)'
         regex_restrictions = r'\Возрастные.ограничения: \d+'
         regex_genres = r'(?s)(?<=Жанры:).*?(?=Теги:)'
         regex_translator = r'Перевод[чик]*[и]*: .+'
@@ -116,7 +117,7 @@ class BookParser:
         # same with copies numbers
 
         try:
-            copies = re.search(r"\d+", ''.join(copies[0]))[0]
+            copies = re.search(r"(\d+\s?)+", str(copies[0]))[0].strip()
         except IndexError:
             copies = 'None'
 
@@ -138,7 +139,7 @@ class BookParser:
         pattern = re.compile(regex_translator, re.UNICODE)
         translator = pattern.findall(bc_info)
         try:
-            translator = re.sub(r'Перевод[чик]*[и]*: ', '', translator[0])
+            translator = re.sub(r'Перевод[чик]*[и]*: ', '', translator[0]).strip()
         except IndexError:
             translator = 'None'
 
@@ -183,7 +184,7 @@ class BookParser:
 
     def parse_edition(self, bc_edition):
         splitted_edition = re.split("\n", re.sub(u"\xa0", '', bc_edition))
-        series = splitted_edition[1]
+        series = splitted_edition[1].strip()
 
         # index 3 if not part of the cycle
         # e.g. 'Game of Thrones' is part of 'Song of Fire and Ice'
