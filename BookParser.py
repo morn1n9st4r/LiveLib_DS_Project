@@ -77,6 +77,11 @@ class BookParser:
         regex_pages_v2 = r'\bСтраниц: \d+'
         regex_pages_v3 = r'\d+\s*стр'
 
+        regex_cover = r'(Тип обложки: .+)|(\n.+(П|п)ереплет.+)|(\n.+((О|о)бложка).+)'
+
+        regex_size = r'Формат: .+'
+        regex_language = r'Язык: \n .+'
+
         regex_books = r'\bТираж.? ((\d+\s?)+|\d+)'
         regex_restrictions = r'\Возрастные.ограничения: \d+'
         regex_genres = r'(?s)(?<=Жанры:).*?(?=Теги:)'
@@ -126,6 +131,31 @@ class BookParser:
         except IndexError:
             copies = 'None'
 
+        pattern = re.compile(regex_size, re.UNICODE)
+        size = pattern.findall(bc_info)
+
+        try:
+            size = size[0]
+            size = re.sub("Формат:", "", re.sub("Возрастные ограничения: .+", "", size)).strip()
+        except IndexError:
+            size = 'None'
+
+        pattern = re.compile(regex_cover, re.UNICODE)
+        cover = pattern.findall(bc_info)
+
+        try:
+            cover = re.search(r"((М|м)ягкий)|((М|м)ягкая)|((Т|т)в(е|ё)рдый)|((Т|т)в(е|ё)рдая)", str(cover[0]))[0]
+        except IndexError:
+            cover = 'None'
+
+        pattern = re.compile(regex_language, re.UNICODE)
+        language = pattern.findall(bc_info)
+
+        try:
+            language = re.search(r" .+", str(language[0]))[0].strip()
+        except IndexError:
+            language = 'None'
+
         pattern = re.compile(regex_restrictions, re.UNICODE)
 
         try:
@@ -150,6 +180,7 @@ class BookParser:
         translator = pattern.findall(bc_info)
         try:
             translator = re.sub(r'Перевод[чик]*[и]*: ', '', translator[0]).strip()
+            translator = translator.split(',')
         except IndexError:
             translator = 'None'
 
@@ -157,6 +188,9 @@ class BookParser:
             'ISBN': [isbn],
             'EditionYear': [year],
             'Pages': [pages],
+            'Size': [size],
+            'CoverType': [cover],
+            'Language': [language],
             'CopiesIssued': [copies],
             'AgeRestrictions': [restrictions],
             'Genres': [genres.split(',')],
